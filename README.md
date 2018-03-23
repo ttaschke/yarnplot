@@ -6,7 +6,7 @@ Yarnplot allows to track specified statistics (e.g. used VCores or memory) of a 
 and store the results either as tabular data or as a graph.
 
 
-* Release 0.1.0 (initial release)
+* Release 0.2.0
 * Python 2.7
 
 ### Example output
@@ -57,16 +57,44 @@ https://hadoop.apache.org/docs/stable/hadoop-yarn/hadoop-yarn-site/ResourceManag
 
 Output options include a plot as `.png` or tabular data as '.csv'.
 
+## Interactive mode to select YARN application for tracking (mode: app, -i option)
+
+In the interactive mode Yarnplot will display a continuously updated list of running YARN applications and let the user select the application to track via keyboard input.
+
+Example:
+
+```
+yarnplot resourcemanager.host app -i
+```
+
+```
+ __  _____   ___  _  _____  __   ____  ______
+ \ \/ / _ | / _ \/ |/ / _ \/ /  / __ \/_  __/
+  \  / __ |/ , _/    / ___/ /__/ /_/ / / /
+  /_/_/ |_/_/|_/_/|_/_/  /____/\____/ /_/
+
+
+  Listing running applications on resourcemanager.host:
+
+
+  1: application_11111111111_00001 'Test Application'
+
+
+Choose application by entering number and hitting ENTER.
+ Refreshing (rate: 3s)...
+ ```
+
+
 ### Full example
 
 ```
-yarnplot resourcemaanger.host app -app_id application_111111111111_00001 -cols allocatedVCores allocatedMB numNonAMContainerPreempted progress -output plot -output_folder output -sample_rate 1
+yarnplot resourcemanager.host app -app_id application_111111111111_00001 -attributes allocatedVCores allocatedMB numNonAMContainerPreempted progress -output plot -output_folder output -sample_rate 1
 ```
 
 ## CLI options
 ```
 $ yarnplot -h
-usage: yarnplot [-h] [-app_id [APP_ID]] [-cols COLS [COLS ...]]
+usage: yarnplot [-h] [-app_id [APP_ID]] [-attributes ATTRIBUTE [ATTRIBUTE ...]]
                 [-sample_rate [SAMPLE_RATE]] [-output [OUTPUT]]
                 [-output_folder [OUTPUT_FOLDER]]
                 [host] [mode]

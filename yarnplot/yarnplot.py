@@ -6,10 +6,11 @@ import sys
 import requests
 import time
 import math
+import os
 
 from datetime import datetime, timedelta
-from threading import Timer
-from Queue import Queue
+from threading import Timer, Thread
+from Queue import Queue, Empty
 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -41,17 +42,32 @@ class YarnPlot(object):
                             help='output mode (plot, csv')
         parser.add_argument('-output_folder', type=str, nargs='?', default=".",
                             help='Existing folder in which to save the output (default: current working directory)')
+        parser.add_argument('-i', action="store_true",
+                            help='Interactive mode (allows to choose application to track interactively')
         self.args = parser.parse_args()
 
         self.base_url = "http://" + self.args.host + ":8088/ws/v1/"
 
+        self.q = Queue()
         if(self.args.mode == 'list'):
             self.list_apps()
         elif(self.args.mode == 'app'):
-            if not self.args.app_id:
-                print("Application id is mandatory for mode app")
-                sys.exit(1)
-            self.q = Queue()
+
+            # interactive mode
+            if (self.args.i):
+                self.inputQueue = Queue()
+                user_input_id = str(self.interactive())
+                self.args.app_id = self.app_list[int(user_input_id)]
+            else:
+                if not self.args.app_id:
+                    print("Application id is mandatory for mode app")
+                    sys.exit(1)
+
+            os.system('clear')
+            self.print_banner()
+            print("Tracking application... \n")
+
+            print("")
             self.track_history()
             self.save_output(self.q.get())
 
@@ -61,10 +77,16 @@ class YarnPlot(object):
         apps = self.get_apps()
 
         print("")
+        app_list_tmp = {}
         if not apps:
+            print("  No applications running")
             return
-        for app in apps:
-            print(app['id'] + " " + app['name'])
+        for idx, app in enumerate(apps):
+            print("  " + str(idx+1) + ": " + app['id'] + " " + app['name'])
+            app_list_tmp[idx+1] = app['id']
+
+        self.app_list = app_list_tmp
+
 
     def show_app(self):
         app = self.get_app(self.args.app_id)
@@ -75,6 +97,7 @@ class YarnPlot(object):
         return r.json()['app']
 
     def get_apps(self, states="RUNNING"):
+
         r = requests.get(self.base_url + "cluster/apps/?states=" + states)
         if r.json()['apps'] is None:
             return None
@@ -122,3 +145,50 @@ class YarnPlot(object):
         seconds = 0 if not data else self.args.sample_rate
         t = Timer(seconds, self.trigger, [data])
         t.start()
+
+    def interactive(self):
+        t = Thread(target=self.refresh_list)
+        t.daemon = True
+        t.start()
+
+        t2 = Thread(target=self.read_input)
+        t2.daemon = True
+        t2.start()
+
+        t.join()
+
+        return self.inputQueue.get(False)
+
+
+    def read_input(self):
+        while(True):
+            user_input = input()
+            self.inputQueue.put(user_input)
+            return
+
+    def refresh_list(self):
+        os.system('clear')
+        while True:
+            try:
+                if not self.inputQueue.empty():
+                    return
+            except Empty:
+                pass
+
+            self.print_banner()
+            print("  Listing running applications on "+self.args.host+":\n")
+            self.list_apps()
+            print("\n\nChoose application by entering the respective number and hitting ENTER.\n Refreshing (rate: 3s)...")
+            time.sleep(3)
+            os.system('clear')
+
+    def print_banner(self):
+        print("""
+ __  _____   ___  _  _____  __   ____  ______
+ \ \/ / _ | / _ \/ |/ / _ \/ /  / __ \/_  __/
+  \  / __ |/ , _/    / ___/ /__/ /_/ / / /   
+  /_/_/ |_/_/|_/_/|_/_/  /____/\____/ /_/    
+                                             
+             """
+        )
+
